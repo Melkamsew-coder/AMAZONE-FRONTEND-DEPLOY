@@ -152,7 +152,6 @@
 
 // export default Auth;
 
-
 import React, { useState, useContext } from "react";
 import classes from "./SignUp.module.css";
 import { Link, useLocation, useNavigate } from "react-router-dom";
@@ -191,6 +190,7 @@ function Auth() {
             type: Type.SET_USER,
             user: userInfo.user,
           });
+          console.log("Dispatched User Info: ", userInfo.user);
           setLoading({ ...loading, signIn: false });
           navigate(navStateData?.state?.redirect || "/", { replace: true });
         })
@@ -296,4 +296,3 @@ function Auth() {
   );
 }
 export default Auth;
-

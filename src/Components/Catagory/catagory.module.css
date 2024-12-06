@@ -27,7 +27,8 @@
 .category__container {
   position: relative;
   margin-top: -10%;
-  display: grid;
+  /* display: grid; */
+  display: flex;
   grid-template-columns: repeat(auto-fit, minmax(350px, 1fr));
   max-width: 1600px;
   gap: 50px;
