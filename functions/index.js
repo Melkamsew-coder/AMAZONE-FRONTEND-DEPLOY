@@ -9,32 +9,57 @@ const stripe = require("stripe")(process.env.STRIPE_KEY);
 
 const app = express();
 
+// Set global options for Firebase Functions
 setGlobalOptions({ maxInstances: 10 });
 
+// Middleware
 app.use(cors({ origin: true }));
 app.use(express.json());
 
+// Test route
 app.get("/", (req, res) => {
+  logger.info("GET request received at /");
   res.status(200).json({
-    message: "success !",
+    message: "success!",
   });
 });
 
+// Payment creation route
 app.post("/payment/create", async (req, res) => {
-  const total = parseInt(req.query.total);
+  const total = parseInt(req.query.total); // Amount passed in cents
+  logger.info(`POST request received at /payment/create with total: ${total}`);
+
   if (total > 0) {
-    const paymentIntent = await stripe.paymentIntents.create({
-      amount: total,
-      currency: "usd",
-    });
-    res.status(201).json({
-      clientSecret: paymentIntent.client_secret,
-    });
+    try {
+      const paymentIntent = await stripe.paymentIntents.create({
+        amount: total, // Total amount in cents
+        currency: "usd", // Currency
+      });
+
+      // Log PaymentIntent details for debugging
+      logger.info("PaymentIntent successfully created", {
+        id: paymentIntent.id,
+        client_secret: paymentIntent.client_secret,
+        amount: paymentIntent.amount,
+        currency: paymentIntent.currency,
+        status: paymentIntent.status,
+      });
+
+      // Respond with the clientSecret
+      res.status(201).json({
+        clientSecret: paymentIntent.client_secret,
+      });
+    } catch (error) {
+      logger.error("Error creating PaymentIntent", { message: error.message });
+      res.status(500).json({ error: "Internal Server Error" });
+    }
   } else {
-    res.status(403).json({
-      message: "Total must be greater than zero",
+    logger.warn("Invalid total amount received", { total });
+    res.status(400).json({
+      error: "Invalid total amount. It must be greater than zero.",
     });
   }
 });
 
+// Export the Firebase Function
 exports.api = onRequest(app);

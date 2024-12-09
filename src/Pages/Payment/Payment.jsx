@@ -31,10 +31,11 @@ function Payment() {
 
   const handlePayment = async (e) => {
     e.preventDefault();
-    alert("Payment form submitted!");
+    // console.log("Payment form submitted!");
     try {
       setProcessing(true);
 
+      // Create PaymentIntent
       const response = await axiosInstance({
         method: "POST",
         url: `/payment/create?total=${totalPrice * 100}`,
@@ -43,6 +44,11 @@ function Payment() {
       const clientSecret = response.data?.clientSecret;
       console.log("Received clientSecret:", clientSecret);
 
+      if (!clientSecret) {
+        throw new Error("Client secret not received from backend.");
+      }
+
+      // Confirm payment
       const { paymentIntent } = await stripe.confirmCardPayment(clientSecret, {
         payment_method: {
           card: elements.getElement(CardElement),
@@ -55,8 +61,8 @@ function Payment() {
       console.log("User UID:", user?.uid);
       console.log("Order ID:", orderId);
 
+      // Save order to Firestore
       try {
-        const orderId = paymentIntent?.id || `${user?.uid}-${Date.now()}`;
         await db
           .collection("users")
           .doc(user?.uid)
@@ -64,7 +70,7 @@ function Payment() {
           .doc(orderId)
           .set({
             basket: basket,
-            amount: paymentIntent?.amount || 0, // Fallback to 0 if undefined
+            amount: paymentIntent?.amount || 0,
             created: paymentIntent?.created || Date.now(),
           });
         console.log("Order successfully saved to Firestore!");
