@@ -16,7 +16,7 @@ import { Elements } from "@stripe/react-stripe-js";
 import { loadStripe } from "@stripe/stripe-js";
 import ProtectedRoute from "./Components/ProtectedRoute/ProtectedRoute";
 const stripePromise = loadStripe(
-  "pk_test_51QEMKCDGk9UjAWn4KlwPLlyjfoPnWR5FrJM844UYZaIRNEaPAUnmJacgVnXEz7MjTqPeveiDIxDWM9jD3MgGfWLN00jouYljG9"
+  "pk_test_51QPxcSCFkRAVyMq3RrSzipo86hNHUhnPANsfI3xCR4IsQopeUvHStgfix3ahFlcbZtfpaAzplUDZxUTehOQ4c70c00zCjCzdwJ"
 );
 
 function Routing() {

@@ -1,5 +1,5 @@
 import React, { useContext, useState } from "react";
-import LayOut from "../../Components/LayOut/LayOut";
+import LayOut from "../../Components/LayOut/LayOut"; // Layout component for consistent page structure
 import classes from "./Payment.module.css";
 import { DataContext } from "../../Components/DataProvider/DataProvider";
 import ProductCard from "../../Components/Product/ProductCard";
@@ -12,56 +12,57 @@ import { useNavigate } from "react-router-dom";
 import { Type } from "../../Utility/action.type";
 
 function Payment() {
+  // Access user and basket data from context
   const [{ user, basket }, dispatch] = useContext(DataContext);
-  const [cardError, setCardError] = useState(null);
-  const [processing, setProcessing] = useState(false);
-  const totalItem = basket?.reduce((amount, item) => item.amount + amount, 0);
+
+  // States for handling card errors and processing state
+  const [cardError, setCardError] = useState(null); // Error messages related to card input
+  const [processing, setProcessing] = useState(false); // Indicates if payment is being processed
+
+  // Calculate total items and price from the basket
+  const totalItem = basket?.reduce((amount, item) => item.amount + amount, 0); // Total number of items
   const totalPrice = basket?.reduce(
     (amount, item) => item.price * item.amount + amount,
     0
-  );
+  ); // Total price of all items
 
+  // Initialize Stripe hooks
   const stripe = useStripe();
   const elements = useElements();
-  const navigate = useNavigate();
+  const navigate = useNavigate(); // Hook for navigating programmatically
 
+  // Handle changes in the card input field
   const handleChange = (e) => {
-    e?.error?.message ? setCardError(e?.error?.message) : setCardError("");
+    e?.error?.message ? setCardError(e?.error?.message) : setCardError(""); // Set error message if any
   };
 
+  // Handle payment submission
   const handlePayment = async (e) => {
-    e.preventDefault();
-    // console.log("Payment form submitted!");
+    e.preventDefault(); // Prevent default form submission
     try {
-      setProcessing(true);
+      setProcessing(true); // Set processing state
 
-      // Create PaymentIntent
+      // Create PaymentIntent by making an API request to the backend
       const response = await axiosInstance({
         method: "POST",
-        url: `/payment/create?total=${totalPrice * 100}`,
+        url: `/payment/create?total=${totalPrice * 100}`, // Pass total price in cents
       });
 
-      const clientSecret = response.data?.clientSecret;
-      console.log("Received clientSecret:", clientSecret);
-
+      const clientSecret = await response.data?.clientSecret; // Retrieve client secret from backend
       if (!clientSecret) {
-        throw new Error("Client secret not received from backend.");
+        throw new Error("Client secret not received from backend."); // Handle error if client secret is missing
       }
 
-      // Confirm payment
+      // Confirm payment with Stripe
       const { paymentIntent } = await stripe.confirmCardPayment(clientSecret, {
         payment_method: {
-          card: elements.getElement(CardElement),
+          card: elements.getElement(CardElement), // Use card element for payment method
         },
       });
 
-      console.log("Payment Intent Response:", paymentIntent);
-
-      const orderId = paymentIntent?.id || `${user?.uid}-${Date.now()}`;
-      console.log("User UID:", user?.uid);
-      console.log("Order ID:", orderId);
-
-      // Save order to Firestore
+      //generates a fallback value using the user's unique ID (user?.uid) and the current timestamp
+      const orderId = paymentIntent?.id || `${user?.uid}-${Date.now()}`; // Generate order ID
+      // Save order details to Firestore
       try {
         await db
           .collection("users")
@@ -69,24 +70,24 @@ function Payment() {
           .collection("orders")
           .doc(orderId)
           .set({
-            basket: basket,
-            amount: paymentIntent?.amount || 0,
-            created: paymentIntent?.created || Date.now(),
+            basket: basket, // Save basket details
+            amount: paymentIntent?.amount || 0, // Save payment amount
+            created: paymentIntent?.created || Date.now(), // Save timestamp
           });
-        console.log("Order successfully saved to Firestore!");
       } catch (error) {
-        console.error("Error saving order to Firestore:", error.message);
+        console.error("Error saving order to Firestore:", error.message); // Log Firestore error
       }
 
+      // Clear the basket after successful payment
       dispatch({
-        type: Type.EMPTY_BASKET,
+        type: Type.EMPTY_BASKET, // Dispatch action to empty basket
       });
 
-      setProcessing(false);
-      navigate("/orders", { state: { msg: "You have placed a new order!" } });
+      setProcessing(false); // Reset processing state
+      navigate("/orders", { state: { msg: "You have placed a new order!" } }); // Navigate to orders page
     } catch (error) {
-      console.error("Payment Error:", error.message);
-      setProcessing(false);
+      console.error("Payment Error:", error.message); // Log payment error
+      setProcessing(false); // Reset processing state
     }
   };
 
@@ -94,33 +95,39 @@ function Payment() {
     <LayOut>
       <div className={classes.payment__header}>Checkout ({totalItem})</div>
       <section className={classes.payment}>
+        {/* Delivery Address Section */}
         <div className={classes.flex}>
           <h3>Delivery Address</h3>
           <div>
-            <div>{user?.email}</div>
-            <div>123 Woodmere Dr</div>
-            <div>Reston, VA</div>
+            <div>{user?.email}</div> {/* User's email */}
+            <div>123 Woodmere Dr</div> {/* Placeholder address */}
+            <div>Reston, VA</div> {/* Placeholder city/state */}
           </div>
         </div>
         <hr />
+
+        {/* Review Items Section */}
         <div className={classes.flex}>
           <h3>Review Items and Delivery</h3>
           <div>
             {basket?.map((item) => (
-              <ProductCard product={item} flex={true} renderAdd={false} />
+              <ProductCard product={item} flex={true} renderAdd={false} /> // Display each item in the basket
             ))}
           </div>
         </div>
         <hr />
+
+        {/* Payment Methods Section */}
         <div className={classes.flex}>
           <h3>Payment Methods</h3>
           <div className={classes.payment__card__container}>
             <div className={classes.payment__details}>
               <form onSubmit={handlePayment}>
                 {cardError && (
-                  <small style={{ color: "red" }}>{cardError}</small>
+                  <small style={{ color: "red" }}>{cardError}</small> // Display card error message
                 )}
-                <CardElement onChange={handleChange} />
+                <CardElement onChange={handleChange} />{" "}
+                {/* Stripe Card Element for payment details */}
                 <div className={classes.payment__price}>
                   <div>
                     <span
@@ -132,17 +139,19 @@ function Payment() {
                       }}
                     >
                       <p>Total Order</p> |{" "}
-                      <CurrencyFormat amount={totalPrice} />
+                      <CurrencyFormat amount={totalPrice} />{" "}
+                      {/* Display total price */}
                     </span>
                   </div>
                   <button type="submit">
                     {processing ? (
                       <div className={classes.loading}>
-                        <ClipLoader color="gray" size={15} />
+                        <ClipLoader color="gray" size={15} />{" "}
+                        {/* Loading spinner */}
                         <p>Please wait...</p>
                       </div>
                     ) : (
-                      "Pay Now"
+                      "Pay Now" // Button text
                     )}
                   </button>
                 </div>
@@ -155,4 +164,4 @@ function Payment() {
   );
 }
 
-export default Payment;
+export default Payment; // Export component for use in other parts of the app
